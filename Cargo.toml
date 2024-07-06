@@ -2,6 +2,8 @@
 name = "jonswap"
 version = "0.1.0"
 edition = "2021"
+description = "CLI for JONSWAP wave model."
+license = "GPL-2.0-only"
 
 [dependencies]
 rand = "0.8.5"
