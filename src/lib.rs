@@ -5,19 +5,173 @@ use rand::rngs::StdRng;
 pub const PI: f64 = 3.14159265358979323846;
 pub const TWOPI: f64 = 6.28318530717958647692;
 
-
+/// Jonswap spectrum
+///
+/// hs     : [m]       significant wave height
+/// tp     : [s]       spectral peak period
+/// gamma  : [-]       JONSWAP peak enhancement factor
+/// nharms : [-]       number of harmonics
+/// seed   : [-]       seed for random phase generator
+/// w0, w1 : [rad/s]   boundaries of angular frequency domain
+/// w      : [rad/s]   vector with angular frequency domain for the spectrum
+/// t      : [s]       vector with period domain for the spectrum
+/// pm     : [m²s/rad] vector with Pierson-Morkowitz wave spectrum
+/// js     : [m²s/rad] vector with JONSWAP wave spectrum
+/// amp    : [m]       vector with amplitude for each harmonic
+/// phi    : [rad]     vector with the phases for each harmonic
+/// td     : [s]       vector with the time domain for wave elevation time trace
+/// eta    : [m]       vector with wave elevation time trace
 pub struct JonswapSpectrum {
-    hs: f64,
+    hs: f64,      
     tp: f64,
+    wp: f64,
     gamma: f64,
+    nharms: usize,
+    seed: u64,
+    w0: f64,
+    w1: f64,
+    to: f64,
+    tf: f64,
+    ts: f64,
+    w: Option<Vec<f64>>,
+    t: Option<Vec<f64>>,
+    pm: Option<Vec<f64>>,
+    js: Option<Vec<f64>>,
+    amp: Option<Vec<f64>>,
+    phi: Option<Vec<f64>>,
+    td: Option<Vec<f64>>,
+    eta: Option<Vec<f64>>,
 }
-
+impl Default for JonswapSpectrum {
+    fn default() -> Self {
+	Self {
+	    hs: 4.5,
+	    tp: 10.0,
+	    wp: TWOPI / 10.0,
+	    gamma: gamma(4.5, 10.0),
+	    nharms: 200,
+	    seed: 12343,
+	    w0: PI / 10.0,
+	    w1: TWOPI,
+	    to: 0.0,
+	    tf: 120.0,
+	    ts: 0.1,
+	    w: None,
+	    t: None,
+	    pm: None,
+	    js: None,
+	    amp: None,
+	    phi: None,
+	    td: None,
+	    eta: None,
+	}
+    }
+}
 impl JonswapSpectrum {
-    pub fn new(hs: f64, tp: f64, gamma: f64) -> Self {
+    pub fn new(hs: f64, tp: f64) -> Self {
 	assert!(hs > 0.0);
 	assert!(tp > 0.0);
+	if !jonswap_is_valid(hs, tp) {
+	    eprintln!("WARNING: Hs-Tp pair is outside of the validity of JONSWAP model.")
+	}
+	let wp = TWOPI / tp;
+	let gamma = gamma(hs, tp);
+	Self { hs, tp, wp, gamma, ..Self::default() }
+    }
+    pub fn update_gamma(&mut self, gamma: f64) {
 	assert!(gamma > 0.0);
-	Self { hs, tp, gamma }
+	self.gamma = gamma;
+    }
+    pub fn set_nharms(&mut self, nharms: usize) {
+	self.nharms = nharms;
+    }
+    pub fn set_seed(&mut self, seed: u64) {
+	self.seed = seed;
+    }
+    pub fn set_duration(&mut self, duration: f64) {
+	self.tf = duration;
+    }
+    pub fn set_timestep(&mut self, timestep: f64) {
+	self.ts = timestep;
+    }
+    pub fn set_w0_w1(&mut self, w0: f64, w1: f64) {
+	self.w0 = w0;
+	self.w1 = w1;
+    }
+    pub fn calculate_spectrum(&mut self) {
+	self.w = Some(freq_domain(self.w0, self.w1, self.nharms));
+	if let Some(w) = &self.w {
+	    self.t = Some(period_domain(w));
+	    self.pm = Some(pierson_moskowitz(self.hs, self.tp, w));
+	    if let Some(pm) = &self.pm {
+		self.js = Some(jonswap(self.wp, self.gamma, w, pm));
+	    }
+	    if let Some(js) = &self.js {
+		self.amp = Some(jonswap_component_amplitude(js, w));
+	    }
+	}
+	self.phi = Some(phases(self.nharms, self.seed));	       
+    }
+    pub fn calculate_time_realisation(&mut self) {
+	
+	self.td = Some(time_domain(self.to, self.tf, self.ts));
+	if let (
+	    Some(amp), Some(w), Some(phi), Some(td)
+	) = (
+	    &self.amp, &self.w, &self.phi, &self.td
+	) {
+	    self.eta = Some(wave_elevation(amp, w, phi, td));
+	} else {
+	    eprintln!("Should call `calculate_spectrum` first.");
+	}
+    }
+    
+    pub fn show_spectrum(&self) {
+	
+	if let (
+	    Some(t), Some(w), Some(pm), Some(js), Some(amp), Some(phi)
+	) = (
+	    &self.t, &self.w, &self.pm, &self.js, &self.amp, &self.phi
+	) {
+	    println!("Wave Hs            : {:8.2} m", self.hs);
+	    println!("Wave Tp            : {:8.2} m", self.tp);
+	    println!("Wave Gamma         : {:8.3} -", self.gamma);
+	    if let (Some(js), Some(w)) = (&self.js, &self.w) {
+		let m0 = spectral_moment(0, js, w);
+		let m2 = spectral_moment(2, js, w);
+		let m4 = spectral_moment(4, js, w);
+		let hm0 = 4.0 * m0.sqrt();
+		println!("Spectral moment m0 : {:8.4} m²", m0);
+		println!("Spectral moment m2 : {:8.4} m²(rd/s)²", m2);
+		println!("Spectral moment m4 : {:8.4} m²(rd/s)^4", m4);
+		println!("Hm0                : {:8.4} m", hm0);
+		
+	    }
+	    println!("\nSpectrum\n========");
+	    println!("{:>10} {:>10} {:>12} {:>12} {:>12} {:>10}",
+		     "T", "w", "PM", "JS", "amp", "phi");
+            println!("{:>10} {:>10} {:>12} {:>12} {:>12} {:>10}",
+		     "[s]", "[rd/s]", "[m²s/rd]", "[m²s/rd]", "[m]", "[rd]");
+            for i in 0..self.nharms as usize {
+		println!("{:10.3} {:10.3} {:12.5} {:12.5} {:12.4} {:10.3}",
+			 t[i], w[i], pm[i], js[i], amp[i], phi[i]);
+	    }
+	} else {
+	    eprintln!("Should call `calculate_spectrum` first.");
+	}
+    }
+    
+    pub fn show_time_realisation(&self) {
+	
+	if let (Some(td), Some(eta)) = (&self.td, &self.eta) {
+	    println!("\nTime History\n============");
+            println!("{:10} {:10}", "Time", "Elevation");
+            for j in 0..td.len() {
+		println!("{:10.2} {:10.3}", td[j], eta[j]);
+	    }
+	} else {
+	    eprintln!("Should call `calculate_time_realisation` first.");
+	}
     }
 }
 
@@ -42,11 +196,11 @@ pub fn jonswap_is_valid(hs: f64, tp: f64) -> bool {
 }
 
 /// Return an array of angular frequencies [rd/s] from w1 to w2, of size length.
-pub fn freq_domain(w1: f64, w2: f64, length: i32) -> Vec<f64> {
+pub fn freq_domain(w1: f64, w2: f64, length: usize) -> Vec<f64> {
 
     // Geometric progression f[i+1] = r * f[i]
     // Better discretisation in the region of interest.
-    let r = (w2 / w1).powf(1.0 / f64::from(length - 1));
+    let r = (w2 / w1).powf(1.0 / f64::from(length as i32- 1));
     successors(Some(w1), |&w| {
 	if w < w2 {
 	    Some(w * r)
@@ -114,7 +268,7 @@ pub fn jonswap(wp: f64, gamma: f64, w: &Vec<f64>, pm: &Vec<f64>) -> Vec<f64> {
 /// length : length of the s and w arrays
 ///
 /// Note that the spectra are being calculated with radians, so
-/// the dimension of the n-th moment is [(rad / s)**(n + 1) * m**2 * s / rad]
+/// the dimension of the n-th moment is [(rad / s)**n * m**2]
 ///
 pub fn spectral_moment(n: i32, s: &Vec<f64>, w: &Vec<f64>) -> f64 {
     let mut m: f64 = 0.0;
