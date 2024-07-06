@@ -7,20 +7,20 @@ pub const TWOPI: f64 = 6.28318530717958647692;
 
 /// Jonswap spectrum
 ///
-/// hs     : [m]       significant wave height
-/// tp     : [s]       spectral peak period
-/// gamma  : [-]       JONSWAP peak enhancement factor
-/// nharms : [-]       number of harmonics
-/// seed   : [-]       seed for random phase generator
-/// w0, w1 : [rad/s]   boundaries of angular frequency domain
-/// w      : [rad/s]   vector with angular frequency domain for the spectrum
-/// t      : [s]       vector with period domain for the spectrum
-/// pm     : [m²s/rad] vector with Pierson-Morkowitz wave spectrum
-/// js     : [m²s/rad] vector with JONSWAP wave spectrum
-/// amp    : [m]       vector with amplitude for each harmonic
-/// phi    : [rad]     vector with the phases for each harmonic
-/// td     : [s]       vector with the time domain for wave elevation time trace
-/// eta    : [m]       vector with wave elevation time trace
+/// * `hs`       : [m]       significant wave height
+/// * `tp`       : [s]       spectral peak period
+/// * `gamma`    : [-]       JONSWAP peak enhancement factor
+/// * `nharms`   : [-]       number of harmonics
+/// * `seed`     : [-]       seed for random phase generator
+/// * `w0`, `w1` : [rad/s]   boundaries of angular frequency domain
+/// * `w`        : [rad/s]   vector with angular frequency domain for the spectrum
+/// * `t`        : [s]       vector with period domain for the spectrum
+/// * `pm`       : [m²s/rad] vector with Pierson-Morkowitz wave spectrum
+/// * `js`       : [m²s/rad] vector with JONSWAP wave spectrum
+/// * `amp`      : [m]       vector with amplitude for each harmonic
+/// * `phi`      : [rad]     vector with the phases for each harmonic
+/// * `td`       : [s]       vector with the time domain for wave elevation time trace
+/// * `eta`      : [m]       vector with wave elevation time trace
 pub struct JonswapSpectrum {
     hs: f64,      
     tp: f64,
@@ -217,10 +217,9 @@ pub fn period_domain(w: &Vec<f64>) -> Vec<f64> {
 
 /// Return Pierson Moskowitz spectrum.
 ///
-/// hs     : significant wave height
-/// tp     : peak period
-/// length : length of the array
-/// w      : angular frequencies, or NULL to calculate it.
+/// * `hs`     : significant wave height
+/// * `tp`     : peak period
+/// * `w`      : angular frequencies, or NULL to calculate it.
 ///
 /// Note that the spectra are being calculated with radians, so
 /// the dimension is [m**2 * s / rad]
@@ -236,12 +235,10 @@ pub fn pierson_moskowitz(hs: f64, tp: f64, w: &Vec<f64>) -> Vec<f64> {
 
 /// Return JONSWAP spectrum.
 ///
-/// hs     : significant wave height
-/// tp     : peak period
-/// fgamma : function(hs, tp) retuning gamma parameter
-/// length : length of the array
-/// w      : angular frequencies
-/// pm     : Pierson Moskowitz spectrum
+/// * `wp`     : spectral peak angular frequency
+/// * `gamma`  : gamma parameter
+/// * `w`      : angular frequencies
+/// * `pm`     : Pierson Moskowitz spectrum
 ///
 /// Note that the spectra are being calculated with radians, so
 /// the dimension is [m**2 * s / rad]
@@ -262,10 +259,9 @@ pub fn jonswap(wp: f64, gamma: f64, w: &Vec<f64>, pm: &Vec<f64>) -> Vec<f64> {
 
 /// Return the n-th spectral moment.
 /// 
-/// n      : order of the spectral moment to be calculated
-/// s      : spectrum array
-/// w      : angular frequency array
-/// length : length of the s and w arrays
+/// * `n`      : order of the spectral moment to be calculated
+/// * `s`      : spectrum array
+/// * `w`      : angular frequency array
 ///
 /// Note that the spectra are being calculated with radians, so
 /// the dimension of the n-th moment is [(rad / s)**n * m**2]
@@ -282,9 +278,8 @@ pub fn spectral_moment(n: i32, s: &Vec<f64>, w: &Vec<f64>) -> f64 {
 /// Return the amplitude of a sinusoidal signal for each frequency component
 /// of a discretizes spectrum.
 ///     
-/// s      : spectrum array
-/// w      : angular frequency array
-/// length : length of the arrays
+/// * `s`      : spectrum array
+/// * `w*       : angular frequency array
 /// 
 /// Ref: https://ceprofs.civil.tamu.edu/jzhang/ocen300/statistics-spectrum.pdf
 ///
@@ -313,9 +308,9 @@ pub fn phases(length: usize, seed: u64) -> Vec<f64> {
 
 /// Return an array of times domain [s] to be used to calculate the wave elevation.
 /// 
-/// to     : start time
-/// tf     : final time
-/// ts     : time step
+/// * `to`     : start time
+/// * `tf`     : final time
+/// * `ts`     : time step
 ///
 pub fn time_domain(to: f64, tf: f64, ts: f64) -> Vec<f64> {
     successors(Some(to), |&t| {
