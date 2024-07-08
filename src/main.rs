@@ -8,7 +8,7 @@ use jonswap::JonswapSpectrum;
 fn help() {
     eprintln!("Use:");
     eprintln!(
-	"  {} hs tp [-n nharms] [-g gamma] [-s seed] [-d duration] [-t timestep] [-h]",
+	"  {} hs tp [-n nharms] [-g gamma] [-s seed] [-d duration] [-t timestep] [-p{{s|t}}] [-h]",
 	env::args().collect::<Vec<_>>()[0]
     );
 }
@@ -16,14 +16,19 @@ fn help() {
 fn help_full() {
     help();
     println!("where:");
-    println!("  hs: significant wave height in meters.");
-    println!("  tp: spectral peak period in seconds");
-    println!("  -n: number of harmonics used to discretise the spectrum.");
-    println!("  -g: value for gamma. If ommited, DNV is used.");
-    println!("  -s: seed number for phase randomisation.");
-    println!("  -d: duration - timetrace will be shown.");
-    println!("  -t: time step. default is 0.1 seconds.");	
-    println!("  -h: show this help.");
+    println!("  hs      : significant wave height in meters.");
+    println!("  tp      : spectral peak period in seconds");
+    println!("  -n      : number of harmonics used to discretise the spectrum.");
+    println!("  -g      : value for gamma. If ommited, DNV is used.");
+    println!("  -s      : seed number for phase randomisation.");
+    println!("  -d      : duration - timetrace will be shown.");
+    println!("  -t      : time step. default is 0.1 seconds.");
+    println!("  -p{{s|t}} : gnuplot friendly output of spectrum (-ps) or timetrace (-pt),");
+    println!("            to be piped to `gnuplot -p -e \"plot '-' using i:j w l\"` where");
+    println!("            `i:j` are the index of the columns to be used as x and y axis.");
+    println!("            Note this only works for 1 plot. For multiple plots, need to");
+    println!("            save the output to a temporary file.");
+    println!("  -h      : show this help.");
 }
 
 // Parse a string into a value, eg, `"2.5" => 2.5`.
@@ -78,7 +83,10 @@ fn main() {
     let mut js = JonswapSpectrum::new(hs, tp);
 
     // Iterate and parse the other arguments
+    let mut gnuplot_spectrum = false;
+    let mut gnuplot_timetrace = false;
     let mut iter = args[3..].iter();
+    
     while let Some(arg) = iter.next() {
 	match arg.as_str() {
 	    "-n" => js.set_nharms(parse_next::<usize>(&mut iter, "nharms")),
@@ -86,6 +94,8 @@ fn main() {
 	    "-s" => js.set_seed(parse_next::<u64>(&mut iter, "seed")),
 	    "-d" => js.set_duration(parse_next::<f64>(&mut iter, "duration")),
 	    "-t" => js.set_timestep(parse_next::<f64>(&mut iter, "timetstep")),
+	    "-ps" => gnuplot_spectrum = true,
+	    "-pt" => gnuplot_timetrace = true,
 	    inv => {
 		eprintln!("Invalid argument {:?}", inv);
 		help();
@@ -95,9 +105,13 @@ fn main() {
     }
 
     js.calculate_spectrum();
-    js.show_spectrum();
+    if !gnuplot_timetrace {
+	js.show_spectrum(gnuplot_spectrum);
+    }
 
-    js.calculate_time_realisation();
-    js.show_time_realisation();
+    if !gnuplot_spectrum {
+	js.calculate_time_realisation();
+	js.show_time_realisation(gnuplot_timetrace);
+    }
 
 }

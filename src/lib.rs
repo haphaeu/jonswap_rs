@@ -126,33 +126,37 @@ impl JonswapSpectrum {
 	}
     }
     
-    pub fn show_spectrum(&self) {
+    pub fn show_spectrum(&self, gnuplot_friendly: bool) {
 	
 	if let (
 	    Some(t), Some(w), Some(pm), Some(js), Some(amp), Some(phi)
 	) = (
 	    &self.t, &self.w, &self.pm, &self.js, &self.amp, &self.phi
 	) {
-	    println!("Wave Hs            : {:8.2} m", self.hs);
-	    println!("Wave Tp            : {:8.2} s", self.tp);
-	    println!("Wave Gamma         : {:8.3} -", self.gamma);
-	    if let (Some(js), Some(w)) = (&self.js, &self.w) {
-		let m0 = spectral_moment(0, js, w);
-		let m2 = spectral_moment(2, js, w);
-		let m4 = spectral_moment(4, js, w);
-		let hm0 = 4.0 * m0.sqrt();
-		println!("Spectral moment m0 : {:8.4} m²", m0);
-		println!("Spectral moment m2 : {:8.4} m²(rd/s)²", m2);
-		println!("Spectral moment m4 : {:8.4} m²(rd/s)^4", m4);
-		println!("Hm0                : {:8.4} m", hm0);
-		
+	    if !gnuplot_friendly {
+		println!("Wave Hs            : {:8.2} m", self.hs);
+		println!("Wave Tp            : {:8.2} s", self.tp);
+		println!("Wave Gamma         : {:8.3} -", self.gamma);
+		if let (Some(js), Some(w)) = (&self.js, &self.w) {
+		    let m0 = spectral_moment(0, js, w);
+		    let m2 = spectral_moment(2, js, w);
+		    let m4 = spectral_moment(4, js, w);
+		    let hm0 = 4.0 * m0.sqrt();
+		    println!("Spectral moment m0 : {:8.4} m²", m0);
+		    println!("Spectral moment m2 : {:8.4} m²(rd/s)²", m2);
+		    println!("Spectral moment m4 : {:8.4} m²(rd/s)^4", m4);
+		    println!("Hm0                : {:8.4} m", hm0);
+		    
+		}
+		println!("\nSpectrum\n========");
 	    }
-	    println!("\nSpectrum\n========");
 	    println!("{:>10} {:>10} {:>12} {:>12} {:>12} {:>10}",
 		     "T", "w", "PM", "JS", "amp", "phi");
-            println!("{:>10} {:>10} {:>12} {:>12} {:>12} {:>10}",
-		     "[s]", "[rd/s]", "[m²s/rd]", "[m²s/rd]", "[m]", "[rd]");
-            for i in 0..self.nharms as usize {
+	    if !gnuplot_friendly {
+		println!("{:>10} {:>10} {:>12} {:>12} {:>12} {:>10}",
+			 "[s]", "[rd/s]", "[m²s/rd]", "[m²s/rd]", "[m]", "[rd]");
+	    }
+	    for i in 0..self.nharms as usize {
 		println!("{:10.3} {:10.6} {:12.8} {:12.8} {:12.5} {:10.5}",
 			 t[i], w[i], pm[i], js[i], amp[i], phi[i]);
 	    }
@@ -161,10 +165,12 @@ impl JonswapSpectrum {
 	}
     }
     
-    pub fn show_time_realisation(&self) {
+    pub fn show_time_realisation(&self, gnuplot_friendly: bool) {
 	
 	if let (Some(td), Some(eta)) = (&self.td, &self.eta) {
-	    println!("\nTime History\n============");
+	    if !gnuplot_friendly {
+		println!("\nTime History\n============");
+	    }
             println!("{:10} {:10}", "Time", "Elevation");
             for j in 0..td.len() {
 		println!("{:10.3} {:10.6}", td[j], eta[j]);
