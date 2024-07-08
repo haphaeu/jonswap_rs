@@ -52,7 +52,7 @@ impl Default for JonswapSpectrum {
 	    nharms: 200,
 	    seed: 12343,
 	    w0: PI / 10.0,
-	    w1: TWOPI,
+	    w1: 2.0 * TWOPI,
 	    to: 0.0,
 	    tf: 120.0,
 	    ts: 0.1,
@@ -134,7 +134,7 @@ impl JonswapSpectrum {
 	    &self.t, &self.w, &self.pm, &self.js, &self.amp, &self.phi
 	) {
 	    println!("Wave Hs            : {:8.2} m", self.hs);
-	    println!("Wave Tp            : {:8.2} m", self.tp);
+	    println!("Wave Tp            : {:8.2} s", self.tp);
 	    println!("Wave Gamma         : {:8.3} -", self.gamma);
 	    if let (Some(js), Some(w)) = (&self.js, &self.w) {
 		let m0 = spectral_moment(0, js, w);
@@ -153,7 +153,7 @@ impl JonswapSpectrum {
             println!("{:>10} {:>10} {:>12} {:>12} {:>12} {:>10}",
 		     "[s]", "[rd/s]", "[m²s/rd]", "[m²s/rd]", "[m]", "[rd]");
             for i in 0..self.nharms as usize {
-		println!("{:10.3} {:10.3} {:12.5} {:12.5} {:12.4} {:10.3}",
+		println!("{:10.3} {:10.6} {:12.8} {:12.8} {:12.5} {:10.5}",
 			 t[i], w[i], pm[i], js[i], amp[i], phi[i]);
 	    }
 	} else {
@@ -167,7 +167,7 @@ impl JonswapSpectrum {
 	    println!("\nTime History\n============");
             println!("{:10} {:10}", "Time", "Elevation");
             for j in 0..td.len() {
-		println!("{:10.2} {:10.3}", td[j], eta[j]);
+		println!("{:10.3} {:10.6}", td[j], eta[j]);
 	    }
 	} else {
 	    eprintln!("Should call `calculate_time_realisation` first.");
